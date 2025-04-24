@@ -44,6 +44,7 @@ export function AnimatedGradientText({
             }
           : undefined
       }
+      key={`${from}-${via}-${to}`}
     >
       {children}
     </motion.span>

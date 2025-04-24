@@ -5,9 +5,11 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useVideoModal } from "@/contexts/video-modal-context"
 
 export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false)
+  const { openVideoModal } = useVideoModal()
 
   const toggleMenu = () => {
     setIsOpen(!isOpen)
@@ -102,7 +104,10 @@ export function MobileMenu() {
                 <Button
                   variant="outline"
                   className="text-white border-white hover:bg-secondary w-full justify-start"
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    openVideoModal()
+                    setIsOpen(false)
+                  }}
                 >
                   Watch Demo
                 </Button>

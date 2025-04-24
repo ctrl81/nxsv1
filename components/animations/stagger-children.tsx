@@ -18,12 +18,14 @@ export function StaggerChildren({
   delay = 0,
   staggerDelay = 0.1,
   className = "",
-  once = true,
+  once = false,
   threshold = 0.1,
 }: StaggerChildrenProps) {
   const { ref, inView } = useInView({
     triggerOnce: once,
     threshold,
+    // Add rootMargin to prevent edge cases
+    rootMargin: "0px 0px -50px 0px",
   })
 
   const containerVariants = {

@@ -19,16 +19,16 @@ export function AnimatedFeatureCard({ icon, title, description, iconAlt, classNa
       transition={{ duration: 0.3 }}
     >
       <motion.div
-        className="w-10 h-10 md:w-12 md:h-12 bg-light-blue rounded-full flex items-center justify-center mx-auto mb-4"
+        className="w-12 h-12 md:w-14 md:h-14 bg-light-blue rounded-full flex items-center justify-center mx-auto mb-4"
         whileHover={{ scale: 1.1, rotate: 5 }}
         transition={{ type: "spring", stiffness: 300 }}
       >
         <Image
           src={icon || "/placeholder.svg"}
           alt={iconAlt}
-          width={20}
-          height={20}
-          className="w-5 h-5 md:w-6 md:h-6"
+          width={24}
+          height={24}
+          className="w-6 h-6 md:w-7 md:h-7"
         />
       </motion.div>
       <motion.h3 className="text-lg md:text-xl font-bold mb-2">{title}</motion.h3>

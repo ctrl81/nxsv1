@@ -20,14 +20,17 @@ export function FadeIn({
   direction = "up",
   duration = 0.5,
   className = "",
-  once = true,
+  once = false,
   threshold = 0.1,
 }: FadeInProps) {
   const { ref, inView } = useInView({
     triggerOnce: once,
     threshold,
+    // Add rootMargin to prevent edge cases
+    rootMargin: "0px 0px -50px 0px",
   })
 
+  // Define the animation variants
   const directionVariants = {
     up: { y: 20 },
     down: { y: -20 },

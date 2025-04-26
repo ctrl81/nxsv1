@@ -2,16 +2,21 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { WalletProvider } from "@/contexts/wallet-context"
-import { TradingProvider } from "@/contexts/trading-context"
 import { VideoModalProvider } from "@/contexts/video-modal-context"
+import { VideoModal } from "@/components/video-modal"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Nexus Trade - Onchain Derivatives Built Differently",
-  description:
-    "Nexus Trade combines decentralized perpetual trading with social dynamics, empowering traders to connect and thrive.",
+  title: "Nexus Trade | Decentralized Perpetual Exchange",
+  description: "Trade on the fastest decentralized perpetual exchange with low fees and high leverage.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/images/logo.png", type: "image/png" },
+    ],
+    apple: { url: "/images/logo.png", type: "image/png" },
+  },
     generator: 'v0.dev'
 }
 
@@ -23,11 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <WalletProvider>
-          <TradingProvider>
-            <VideoModalProvider>{children}</VideoModalProvider>
-          </TradingProvider>
-        </WalletProvider>
+        <VideoModalProvider>
+          {children}
+          <VideoModal />
+        </VideoModalProvider>
       </body>
     </html>
   )

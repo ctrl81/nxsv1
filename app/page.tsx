@@ -4,7 +4,6 @@ import type React from "react"
 
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { MobileMenu } from "@/components/mobile-menu"
@@ -18,6 +17,7 @@ import { AnimatedBackground } from "@/components/animations/animated-background"
 import { FloatingElements } from "@/components/animations/floating-elements"
 import { useInView } from "react-intersection-observer"
 import { useVideoModal } from "@/contexts/video-modal-context"
+import { Logo } from "@/components/logo"
 
 export default function Home() {
   const router = useRouter()
@@ -85,17 +85,8 @@ export default function Home() {
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <div className="container mx-auto flex justify-between items-center">
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link href="/" className="flex items-center">
-              <Image
-                src="/images/logo.png"
-                alt="Nexus Trade Logo"
-                width={40}
-                height={40}
-                className="h-8 w-auto md:h-10"
-              />
-            </Link>
-          </motion.div>
+          {/* Logo - directly use the Logo component with withLink=true */}
+          <Logo size="md" />
 
           {/* Mobile Menu */}
           <div className="flex items-center gap-4">
@@ -148,6 +139,7 @@ export default function Home() {
         </div>
       </motion.header>
 
+      {/* Rest of the page content remains the same */}
       {/* Hero Section */}
       <section className="bg-dark py-12 md:py-20 text-center px-4 relative overflow-hidden" ref={heroRef}>
         {/* Background Animation */}
@@ -606,7 +598,7 @@ export default function Home() {
                 ease: "easeInOut",
               }}
             >
-              <Image src="/images/logo.png" alt="Nexus Trade Logo" width={50} height={50} className="h-12 w-auto" />
+              <Logo size="lg" withLink={false} />
             </motion.div>
           </motion.div>
 

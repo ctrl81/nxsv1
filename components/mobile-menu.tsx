@@ -103,7 +103,7 @@ export function MobileMenu() {
               <motion.div variants={itemVariants}>
                 <Button
                   variant="outline"
-                  className="text-white border-white hover:bg-secondary w-full justify-start"
+                  className="text-white border-white bg-gray-800/50 hover:bg-primary hover:text-dark hover:border-primary w-full justify-start"
                   onClick={() => {
                     openVideoModal()
                     setIsOpen(false)

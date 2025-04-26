@@ -263,7 +263,10 @@ export default function GetConnectedPage() {
                       <AnimatedButton className="bg-primary text-dark hover:bg-blue-600" whileHover={{ scale: 1.05 }}>
                         Download SUI Wallet
                       </AnimatedButton>
-                      <AnimatedButton variant="outline" className="text-white border-white hover:bg-gray-800">
+                      <AnimatedButton
+                        variant="outline"
+                        className="text-white border-white bg-gray-800 hover:bg-gray-700"
+                      >
                         View Documentation
                       </AnimatedButton>
                     </div>
@@ -334,7 +337,10 @@ export default function GetConnectedPage() {
                       <AnimatedButton className="bg-primary text-dark hover:bg-blue-600" whileHover={{ scale: 1.05 }}>
                         Download Stashed
                       </AnimatedButton>
-                      <AnimatedButton variant="outline" className="text-white border-white hover:bg-gray-800">
+                      <AnimatedButton
+                        variant="outline"
+                        className="text-white border-white bg-gray-800 hover:bg-gray-700"
+                      >
                         View Documentation
                       </AnimatedButton>
                     </div>
@@ -412,7 +418,10 @@ export default function GetConnectedPage() {
                       <AnimatedButton className="bg-primary text-dark hover:bg-blue-600" whileHover={{ scale: 1.05 }}>
                         View Compatible Wallets
                       </AnimatedButton>
-                      <AnimatedButton variant="outline" className="text-white border-white hover:bg-gray-800">
+                      <AnimatedButton
+                        variant="outline"
+                        className="text-white border-white bg-gray-800 hover:bg-gray-700"
+                      >
                         Request Wallet Integration
                       </AnimatedButton>
                     </div>
@@ -688,7 +697,7 @@ export default function GetConnectedPage() {
             <Link href="/faq">
               <AnimatedButton
                 variant="outline"
-                className="text-white border-white hover:bg-gray-800"
+                className="text-white border-white bg-gray-800 hover:bg-gray-700"
                 whileHover={{ scale: 1.05 }}
               >
                 View All FAQs

@@ -96,7 +96,9 @@ export function TradeForm({ currentPrice, onTrade, className = "", isConnected =
       <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-400 mb-1">
           <span>Amount to be paid</span>
-          <span>0 {selectedToken}</span>
+          <span>
+            {amount.toFixed(2)} {selectedToken}
+          </span>
         </div>
 
         <div className="flex space-x-2 mb-2">
@@ -116,25 +118,33 @@ export function TradeForm({ currentPrice, onTrade, className = "", isConnected =
 
           <div className="w-24 py-2 px-4 rounded-md bg-gray-900 text-white font-medium text-right">
             {amount.toFixed(2)}
-            <div className="text-xs text-gray-500 text-right">MAX</div>
+            <button
+              className="text-xs text-primary font-medium block ml-auto"
+              onClick={() => setAmount(100)} // Set to max amount
+            >
+              MAX
+            </button>
           </div>
         </div>
 
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(Number.parseFloat(e.target.value))}
-          className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
-        />
+        <div className="flex items-center space-x-2">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(Number.parseFloat(e.target.value))}
+            className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
       </div>
 
       {/* Leverage Slider */}
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-400 mb-1">
           <span>Leverage</span>
+          <span>{leverage}x</span>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -149,9 +159,20 @@ export function TradeForm({ currentPrice, onTrade, className = "", isConnected =
           />
           <div className="text-white font-medium">10x</div>
 
-          <button className="py-1 px-3 rounded-md bg-gray-800 text-white text-sm" onClick={() => setLeverage(5)}>
-            5x
-          </button>
+          <div className="flex space-x-2">
+            <button
+              className="py-1 px-3 rounded-md bg-gray-800 text-white text-sm hover:bg-gray-700"
+              onClick={() => setLeverage(Math.max(1, leverage - 1))}
+            >
+              -
+            </button>
+            <button
+              className="py-1 px-3 rounded-md bg-gray-800 text-white text-sm hover:bg-gray-700"
+              onClick={() => setLeverage(Math.min(10, leverage + 1))}
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
 

@@ -11,6 +11,8 @@ interface TradeFormData {
   amount: number
   leverage: number
   price?: number
+  stopLoss?: number
+  takeProfit?: number
   token: Token
 }
 
@@ -104,9 +106,10 @@ export function TradingProvider({ children }: TradingProviderProps) {
       // Update order book
       setOrderBook(generateMockOrderBook())
 
-      // Update positions PnL
-      setPositions((prev) =>
-        prev.map((position) => {
+      // Update positions PnL and check for stop loss/take profit
+      setPositions((prev) => {
+        const updatedPositions = prev.map((position) => {
+          // Calculate new PnL based on current price
           const pnlPercentage =
             position.type === "long"
               ? ((currentPrice - position.entryPrice) / position.entryPrice) * 100 * position.leverage
@@ -114,13 +117,51 @@ export function TradingProvider({ children }: TradingProviderProps) {
 
           const pnl = (position.size * pnlPercentage) / 100
 
+          // Check if stop loss or take profit would be triggered
+          const isStopLossTriggered =
+            position.stopLoss &&
+            ((position.type === "long" && currentPrice <= position.stopLoss) ||
+              (position.type === "short" && currentPrice >= position.stopLoss))
+
+          const isTakeProfitTriggered =
+            position.takeProfit &&
+            ((position.type === "long" && currentPrice >= position.takeProfit) ||
+              (position.type === "short" && currentPrice <= position.takeProfit))
+
+          // If stop loss or take profit is triggered, we'll handle it in the next step
           return {
             ...position,
             pnl,
             pnlPercentage,
+            _shouldClose: isStopLossTriggered || isTakeProfitTriggered,
+            _closeReason: isStopLossTriggered ? "Stop Loss" : isTakeProfitTriggered ? "Take Profit" : null,
           }
-        }),
-      )
+        })
+
+        // Close positions that hit stop loss or take profit
+        const positionsToClose = updatedPositions.filter((position) => position._shouldClose)
+
+        if (positionsToClose.length > 0) {
+          // Add to trade history for closed positions
+          positionsToClose.forEach((position) => {
+            const newTrade: TradeHistory = {
+              id: `trade-${Date.now()}-${position.id}`,
+              type: position.type === "long" ? "short" : "long", // Opposite to close
+              price: currentPrice,
+              size: position.size,
+              fee: position.size * 0.0006, // 0.06% fee
+              timestamp: Date.now(),
+            }
+
+            setTradeHistory((prev) => [...prev, newTrade])
+          })
+
+          // Filter out closed positions
+          return updatedPositions.filter((position) => !position._shouldClose)
+        }
+
+        return updatedPositions
+      })
     }, 5000)
 
     return () => clearInterval(interval)
@@ -145,6 +186,8 @@ export function TradingProvider({ children }: TradingProviderProps) {
         margin: data.amount / data.leverage,
         liquidationPrice:
           data.type === "long" ? currentPrice * (1 - 0.9 / data.leverage) : currentPrice * (1 + 0.9 / data.leverage),
+        stopLoss: data.stopLoss,
+        takeProfit: data.takeProfit,
         pnl: 0,
         pnlPercentage: 0,
         timestamp: Date.now(),

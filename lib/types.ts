@@ -32,9 +32,13 @@ export type Position = {
   size: number
   margin: number
   liquidationPrice: number
+  stopLoss?: number
+  takeProfit?: number
   pnl: number
   pnlPercentage: number
   timestamp: number
+  _shouldClose?: boolean
+  _closeReason?: string | null
 }
 
 export type Order = {
@@ -43,9 +47,13 @@ export type Order = {
   positionType: PositionType
   price: number
   size: number
+  leverage?: number
+  stopLoss?: number
+  takeProfit?: number
   filled: number
   status: "open" | "filled" | "canceled"
   timestamp: number
+  filledAt?: number
 }
 
 export type TradeHistory = {
@@ -55,9 +63,13 @@ export type TradeHistory = {
   size: number
   fee: number
   timestamp: number
+  action?: "open" | "close"
+  pnl?: number
+  reason?: string
 }
 
-export type Token = "WBTC" | "ETH" | "SUI"
+// Sui blockchain specific tokens
+export type Token = "SUI" | "USDC" | "USDT" | "WETH" | "WBTC" | "CETUS" | "TURBOS" | "AFT"
 
 export type WalletType = "sui" | "stashed"
 
@@ -68,4 +80,27 @@ export type WalletInfo = {
   }
   connected: boolean
   type: WalletType
+}
+
+export type TradingViewTimeFrame = "1" | "5" | "15" | "60" | "240" | "D" | "W"
+
+export type TradingPair = {
+  id: string
+  baseAsset: string
+  quoteAsset: string
+  price: number
+  change24h: number
+  volume24h: number
+  baseAssetLogo?: string
+}
+
+export type PriceAlertCondition = "above" | "below"
+
+export type PriceAlert = {
+  id: string
+  pair: string
+  price: number
+  condition: PriceAlertCondition
+  createdAt: Date
+  isActive: boolean
 }

@@ -16,12 +16,15 @@ interface DepositModalProps {
 
 export function DepositModal({ open, onOpenChange, onDeposit }: DepositModalProps) {
   const [amount, setAmount] = useState<string>("0.00")
-  const [selectedToken, setSelectedToken] = useState<Token>("WBTC")
+  const [selectedToken, setSelectedToken] = useState<Token>("SUI")
 
   const handleDeposit = () => {
     onDeposit(Number.parseFloat(amount), selectedToken)
     onOpenChange(false)
   }
+
+  // Sui blockchain tokens
+  const suiTokens: Token[] = ["SUI", "USDC", "USDT", "WETH", "WBTC", "CETUS", "TURBOS", "AFT"]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,7 +55,7 @@ export function DepositModal({ open, onOpenChange, onDeposit }: DepositModalProp
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {(["WBTC", "ETH", "SUI"] as Token[]).map((token) => (
+            {suiTokens.map((token) => (
               <motion.button
                 key={token}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${

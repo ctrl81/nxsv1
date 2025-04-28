@@ -3,7 +3,8 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { VideoModalProvider } from "@/contexts/video-modal-context"
-import { VideoModal } from "@/components/video-modal"
+import { WalletProvider } from "@/contexts/wallet-context"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,10 +29,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <VideoModalProvider>
-          {children}
-          <VideoModal />
-        </VideoModalProvider>
+        <WalletProvider>
+          <VideoModalProvider>
+            {children}
+            <Toaster />
+          </VideoModalProvider>
+        </WalletProvider>
       </body>
     </html>
   )

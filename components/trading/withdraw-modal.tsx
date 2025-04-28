@@ -17,7 +17,7 @@ interface WithdrawModalProps {
 
 export function WithdrawModal({ open, onOpenChange, onWithdraw, balances }: WithdrawModalProps) {
   const [amount, setAmount] = useState<string>("0.00")
-  const [selectedToken, setSelectedToken] = useState<Token>("WBTC")
+  const [selectedToken, setSelectedToken] = useState<Token>("SUI")
 
   const handleWithdraw = () => {
     onWithdraw(Number.parseFloat(amount), selectedToken)
@@ -28,6 +28,9 @@ export function WithdrawModal({ open, onOpenChange, onWithdraw, balances }: With
     const maxAmount = balances[selectedToken] || 0
     setAmount(maxAmount.toString())
   }
+
+  // Sui blockchain tokens
+  const suiTokens: Token[] = ["SUI", "USDC", "USDT", "WETH", "WBTC", "CETUS", "TURBOS", "AFT"]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,7 +68,7 @@ export function WithdrawModal({ open, onOpenChange, onWithdraw, balances }: With
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {(["WBTC", "ETH", "SUI"] as Token[]).map((token) => (
+            {suiTokens.map((token) => (
               <motion.button
                 key={token}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${

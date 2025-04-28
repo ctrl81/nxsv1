@@ -17,19 +17,14 @@ import { AnimatedBackground } from "@/components/animations/animated-background"
 import { FloatingElements } from "@/components/animations/floating-elements"
 import { useInView } from "react-intersection-observer"
 import { useVideoModal } from "@/contexts/video-modal-context"
-import { useWallet } from "@/contexts/wallet-context"
 import { Logo } from "@/components/logo"
-import { useToast } from "@/components/ui/use-toast"
 
 export default function Home() {
   const router = useRouter()
+  const [isConnected, setIsConnected] = useState(false)
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { openVideoModal } = useVideoModal()
-  const { wallet, connectWallet } = useWallet()
-  const { toast } = useToast()
-
-  const isConnected = wallet?.connected || false
 
   const { ref: heroRef, inView: heroInView } = useInView({
     triggerOnce: false,
@@ -64,19 +59,8 @@ export default function Home() {
   const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"])
   const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [1, 0.8, 0.6])
 
-  const handleConnectWallet = async () => {
-    try {
-      if (isConnected || (await connectWallet("sui"))) {
-        router.push("/trading")
-      }
-    } catch (error) {
-      console.error("Failed to connect wallet:", error)
-      toast({
-        title: "Connection Failed",
-        description: "Failed to connect wallet. Please try again.",
-        variant: "destructive",
-      })
-    }
+  const handleConnectWallet = () => {
+    router.push("/trading")
   }
 
   const handleSubscribe = (e: React.FormEvent) => {
@@ -87,10 +71,7 @@ export default function Home() {
     setTimeout(() => {
       setIsSubmitting(false)
       setEmail("")
-      toast({
-        title: "Subscription Successful",
-        description: "Thank you for subscribing to our newsletter!",
-      })
+      alert("Thank you for subscribing!")
     }, 1000)
   }
 
@@ -117,7 +98,7 @@ export default function Home() {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleConnectWallet}
               >
-                {isConnected ? "Trading Dashboard" : "Connect Wallet"}
+                Connect Wallet
               </AnimatedButton>
             </div>
             <MobileMenu />
@@ -145,7 +126,7 @@ export default function Home() {
           {/* Desktop Buttons */}
           <div className="hidden md:flex space-x-4">
             <AnimatedButton className="bg-cta-blue text-dark hover:bg-primary" onClick={handleConnectWallet}>
-              {isConnected ? "Trading Dashboard" : "Connect SUI Wallet"}
+              Connect SUI Wallet
             </AnimatedButton>
             <AnimatedButton
               variant="outline"
@@ -189,7 +170,7 @@ export default function Home() {
                 whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(142, 202, 255, 0.5)" }}
                 onClick={handleConnectWallet}
               >
-                {isConnected ? "Go to Trading Dashboard" : "Connect SUI Wallet"}
+                Connect SUI Wallet
               </AnimatedButton>
               <AnimatedButton
                 variant="outline"
@@ -544,7 +525,7 @@ export default function Home() {
                 className="border-dark text-dark hover:bg-light-blue px-4 sm:px-8 py-2 sm:py-6 text-sm md:text-base mt-3 sm:mt-0"
                 onClick={handleConnectWallet}
               >
-                {isConnected ? "Go to Trading Dashboard" : "Connect SUI Wallet"}
+                Connect SUI Wallet
               </AnimatedButton>
             </div>
           </FadeIn>

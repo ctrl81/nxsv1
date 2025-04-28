@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { WalletInfo, WalletType, Token } from "@/lib/types"
-import { useToast } from "@/components/ui/use-toast"
 
 interface WalletContextType {
   wallet: WalletInfo | null
@@ -27,7 +26,6 @@ interface WalletProviderProps {
 export function WalletProvider({ children }: WalletProviderProps) {
   const [wallet, setWallet] = useState<WalletInfo | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
-  const { toast } = useToast()
 
   // Check for existing wallet connection on mount
   useEffect(() => {
@@ -47,23 +45,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setIsConnecting(true)
 
     try {
-      // Check if wallet is already connected
-      if (wallet?.connected) {
-        return true
-      }
-
-      // Check if Sui wallet is available in the browser
-      const isSuiWalletAvailable = typeof window !== "undefined" && "suiWallet" in window
-
-      if (type === "sui" && !isSuiWalletAvailable) {
-        toast({
-          title: "Sui Wallet Not Detected",
-          description: "Please install the Sui Wallet extension to connect.",
-          variant: "destructive",
-        })
-        return false
-      }
-
       // Simulate connection delay
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -71,14 +52,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const mockAddress = `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("")}`
 
       const mockBalance: Record<Token, number> = {
+        WBTC: Number.parseFloat((Math.random() * 2).toFixed(8)),
+        ETH: Number.parseFloat((Math.random() * 10).toFixed(8)),
         SUI: Number.parseFloat((Math.random() * 1000).toFixed(2)),
-        USDC: Number.parseFloat((Math.random() * 2000).toFixed(2)),
-        USDT: Number.parseFloat((Math.random() * 2000).toFixed(2)),
-        WETH: Number.parseFloat((Math.random() * 2).toFixed(8)),
-        WBTC: Number.parseFloat((Math.random() * 0.1).toFixed(8)),
-        CETUS: Number.parseFloat((Math.random() * 5000).toFixed(2)),
-        TURBOS: Number.parseFloat((Math.random() * 2000).toFixed(2)),
-        AFT: Number.parseFloat((Math.random() * 10000).toFixed(2)),
       }
 
       const newWallet: WalletInfo = {
@@ -90,22 +66,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
       setWallet(newWallet)
       localStorage.setItem("nexus_wallet", JSON.stringify(newWallet))
-
-      toast({
-        title: "Wallet Connected",
-        description: "Your Sui wallet has been successfully connected.",
-      })
-
       return true
     } catch (error) {
       console.error("Failed to connect wallet", error)
-
-      toast({
-        title: "Connection Failed",
-        description: "Failed to connect wallet. Please try again.",
-        variant: "destructive",
-      })
-
       return false
     } finally {
       setIsConnecting(false)
@@ -115,11 +78,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const disconnectWallet = () => {
     setWallet(null)
     localStorage.removeItem("nexus_wallet")
-
-    toast({
-      title: "Wallet Disconnected",
-      description: "Your wallet has been disconnected.",
-    })
   }
 
   return (

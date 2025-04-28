@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Slider } from "@/components/ui/slider"
@@ -11,7 +9,6 @@ import { PriceEditor } from "@/components/trading/price-editor"
 import type { OrderType, PositionType, Token } from "@/lib/types"
 import { AlertTriangle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { useWallet } from "@/contexts/wallet-context"
 
 interface TradeFormProps {
   currentPrice: number
@@ -43,9 +40,6 @@ export function TradeForm({
   // Get toast
   const { toast } = useToast()
 
-  // Get wallet context
-  const { wallet, connectWallet } = useWallet()
-
   const [positionType, setPositionType] = useState<PositionType>("long")
   const [orderType, setOrderType] = useState<OrderType>("market")
   const [amount, setAmount] = useState<number>(100)
@@ -55,10 +49,6 @@ export function TradeForm({
   const [takeProfit, setTakeProfit] = useState<string>("")
   const [showAdvanced, setShowAdvanced] = useState<boolean>(true)
   const [limitPrice, setLimitPrice] = useState<number>(currentPrice)
-
-  // Min and max amount for the slider
-  const minAmount = 10
-  const maxAmount = 2000
 
   // Predefined amount options
   const amountOptions = [50, 100, 250, 500, 1000]
@@ -84,33 +74,10 @@ export function TradeForm({
       setStopLoss((currentPrice * 1.05).toFixed(2)) // 5% above entry price
       setTakeProfit((currentPrice * 0.9).toFixed(2)) // 10% below entry price
     }
-  }, [positionType, currentPrice]) // Include currentPrice to update when price changes
+  }, [positionType]) // Only run on position type change, not on current price change
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!validateForm()) return
-
-    // If not connected, connect wallet first
-    if (!isConnected && !wallet?.connected) {
-      try {
-        const connected = await connectWallet("sui")
-        if (!connected) {
-          toast({
-            title: "Wallet Connection Required",
-            description: "Please connect your wallet to trade",
-            variant: "destructive",
-          })
-          return
-        }
-      } catch (error) {
-        console.error("Failed to connect wallet:", error)
-        toast({
-          title: "Connection Failed",
-          description: "Failed to connect wallet. Please try again.",
-          variant: "destructive",
-        })
-        return
-      }
-    }
 
     if (onTrade) {
       onTrade({
@@ -228,17 +195,12 @@ export function TradeForm({
     setLimitPrice(newPrice)
   }
 
-  // Handle amount slider change
-  const handleAmountChange = (value: number[]) => {
-    setAmount(value[0])
-  }
-
-  // Handle amount input change
-  const handleAmountInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number.parseFloat(e.target.value)
-    if (!isNaN(value)) {
-      setAmount(Math.min(Math.max(value, minAmount), maxAmount))
-    }
+  // Handle percentage of balance buttons
+  const handlePercentageClick = (percentage: number) => {
+    // This would be based on actual balance in a real app
+    const maxAmount = 2000 // Example max amount
+    const newAmount = Math.floor((maxAmount * percentage) / 100)
+    setAmount(newAmount)
   }
 
   // Check if stop loss is valid
@@ -321,8 +283,8 @@ export function TradeForm({
         </div>
       )}
 
-      {/* Amount Selection - Now with slider instead of percentage buttons */}
-      <div className="mb-6">
+      {/* Amount Selection - Now with preset buttons and percentage buttons */}
+      <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-400 mb-1">
           <span>Amount to be paid</span>
           <span>
@@ -330,7 +292,7 @@ export function TradeForm({
           </span>
         </div>
 
-        <div className="flex space-x-2 mb-4">
+        <div className="flex space-x-2 mb-2">
           <div className="flex-1 flex space-x-1">
             {quoteTokens.map((token) => (
               <button
@@ -345,35 +307,13 @@ export function TradeForm({
             ))}
           </div>
 
-          <Input
-            type="number"
-            value={amount.toFixed(2)}
-            onChange={handleAmountInputChange}
-            className="w-24 py-2 px-4 rounded-md bg-gray-900 text-white font-medium text-right"
-            min={minAmount}
-            max={maxAmount}
-            step="10"
-          />
-        </div>
-
-        {/* Amount slider */}
-        <div className="mb-4">
-          <div className="flex items-center space-x-4">
-            <div className="text-white font-medium text-xs">{minAmount}</div>
-            <Slider
-              value={[amount]}
-              min={minAmount}
-              max={maxAmount}
-              step={10}
-              onValueChange={handleAmountChange}
-              className="flex-1"
-            />
-            <div className="text-white font-medium text-xs">{maxAmount}</div>
+          <div className="w-24 py-2 px-4 rounded-md bg-gray-900 text-white font-medium text-right">
+            {amount.toFixed(2)}
           </div>
         </div>
 
         {/* Amount preset buttons */}
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-2 mb-2">
           {amountOptions.map((option) => (
             <button
               key={option}
@@ -386,10 +326,23 @@ export function TradeForm({
             </button>
           ))}
         </div>
+
+        {/* Percentage of balance buttons */}
+        <div className="grid grid-cols-4 gap-2">
+          {[25, 50, 75, 100].map((percentage) => (
+            <button
+              key={percentage}
+              className="py-1 px-2 text-xs rounded-md bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+              onClick={() => handlePercentageClick(percentage)}
+            >
+              {percentage}%
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Leverage Slider */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-400 mb-1">
           <span>Leverage</span>
           <span>{leverage}x</span>
@@ -520,7 +473,7 @@ export function TradeForm({
         whileTap={{ scale: 0.98 }}
         disabled={!isStopLossValid || !isTakeProfitValid}
       >
-        {isConnected || wallet?.connected
+        {isConnected
           ? orderType === "market"
             ? positionType === "long"
               ? "Open Long Position"
@@ -535,11 +488,13 @@ export function TradeForm({
       <div className="mt-6 space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-gray-400">Entry Price</span>
-          <span className="text-white">${orderType === "limit" ? limitPrice.toFixed(2) : currentPrice.toFixed(2)}</span>
+          <span className="text-white">
+            {isConnected ? `$${orderType === "limit" ? limitPrice.toFixed(2) : currentPrice.toFixed(2)}` : "-"}
+          </span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Liquidation Price</span>
-          <span className="text-white">${liquidationPrice.toFixed(2)}</span>
+          <span className="text-white">{isConnected ? `$${liquidationPrice.toFixed(2)}` : "-"}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Stop Loss</span>
@@ -551,15 +506,15 @@ export function TradeForm({
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Open Fee(0.06%)</span>
-          <span className="text-white">${(amount * 0.0006).toFixed(2)}</span>
+          <span className="text-white">{isConnected ? `$${(amount * 0.0006).toFixed(2)}` : "-"}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Price Impact</span>
-          <span className="text-white">~0.01%</span>
+          <span className="text-white">{isConnected ? "~0.01%" : "-"}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Borrow Fees Due</span>
-          <span className="text-white">${(amount * 0.0001 * leverage).toFixed(4)}/hr</span>
+          <span className="text-white">{isConnected ? `$${(amount * 0.0001 * leverage).toFixed(4)}/hr` : "-"}</span>
         </div>
       </div>
     </motion.div>

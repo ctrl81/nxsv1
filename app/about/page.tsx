@@ -1,6 +1,7 @@
 "use client"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { FadeIn } from "@/components/animations/fade-in"
 import { StaggerChildren, StaggerItem } from "@/components/animations/stagger-children"
@@ -14,6 +15,7 @@ import { useVideoModal } from "@/contexts/video-modal-context"
 
 export default function AboutPage() {
   const { openVideoModal } = useVideoModal()
+  const router = useRouter()
   const { ref: missionRef, inView: missionInView } = useInView({
     triggerOnce: false,
     threshold: 0.1,
@@ -25,7 +27,9 @@ export default function AboutPage() {
     threshold: 0.1,
     rootMargin: "0px 0px -100px 0px",
   })
-
+  const handleConnectWallet = () => {
+    router.push("/trading")
+  }
   const { ref: timelineRef, inView: timelineInView } = useInView({
     triggerOnce: false,
     threshold: 0.1,
@@ -62,6 +66,7 @@ export default function AboutPage() {
                 className="bg-cta-blue text-dark hover:bg-primary text-xs"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={handleConnectWallet}
               >
                 Connect Wallet
               </AnimatedButton>
@@ -90,7 +95,7 @@ export default function AboutPage() {
 
           {/* Desktop Buttons */}
           <div className="hidden md:flex space-x-4">
-            <AnimatedButton className="bg-cta-blue text-dark hover:bg-primary">Connect SUI Wallet</AnimatedButton>
+            <AnimatedButton className="bg-cta-blue text-dark hover:bg-primary" onClick={handleConnectWallet}>Connect SUI Wallet</AnimatedButton>
             <AnimatedButton
               variant="outline"
               className="text-white border-white bg-gray-800/50 hover:bg-primary hover:text-dark hover:border-primary"
@@ -397,11 +402,11 @@ export default function AboutPage() {
             <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-12">
               Our <AnimatedGradientText>Journey</AnimatedGradientText>
             </h2>
-          </FadeIn>
+              </FadeIn>
 
-          <div className="relative">
+              <div className="relative">
             {/* Timeline Line */}
-            <div className="absolute left-0 md:left-1/2 top-0 bottom-0 w-1 bg-gray-800 transform md:translate-x-[-50%]"></div>
+            <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gray-800 transform -translate-x-1/2 hidden md:block"></div>
 
             {/* Timeline Items */}
             <div className="space-y-12">
@@ -453,7 +458,7 @@ export default function AboutPage() {
                 </div>
               </FadeIn>
 
-              {/* 2023 Q1 */}
+              {/* 2025 Q1 */}
               <FadeIn once={false} delay={0.3}>
                 <div className="relative flex flex-col md:flex-row items-center md:justify-between">
                   <div className="flex-1 md:pr-8 md:text-right order-2 md:order-1"></div>
@@ -469,7 +474,7 @@ export default function AboutPage() {
                 </div>
               </FadeIn>
 
-              {/* 2023 Q4 */}
+              {/* 2025 Q4 */}
               <FadeIn once={false} delay={0.4}>
                 <div className="relative flex flex-col md:flex-row items-center md:justify-between">
                   <div className="flex-1 md:pr-8 md:text-right order-2 md:order-1">
@@ -524,6 +529,7 @@ export default function AboutPage() {
               <AnimatedButton
                 className="bg-dark text-white hover:bg-secondary px-4 sm:px-8 py-2 sm:py-6 text-sm md:text-base"
                 whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(0, 15, 29, 0.5)" }}
+                onClick={handleConnectWallet}
               >
                 Start Trading
               </AnimatedButton>
@@ -600,7 +606,7 @@ export default function AboutPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
           >
-            <p>© 2023 Nexus Trade. All rights reserved.</p>
+            <p>© 2025 Nexus Trade. All rights reserved.</p>
             <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4">
               <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
                 <Link href="/privacy-policy" className="hover:text-primary">

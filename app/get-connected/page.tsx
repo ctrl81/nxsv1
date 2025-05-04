@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { FadeIn } from "@/components/animations/fade-in"
@@ -21,7 +22,7 @@ export default function GetConnectedPage() {
   const [activeTab, setActiveTab] = useState("sui")
   const [email, setEmail] = useState("")
   const { openVideoModal } = useVideoModal()
-
+  const router = useRouter()
   const { ref: stepsRef, inView: stepsInView } = useInView({
     triggerOnce: false,
     threshold: 0.1,
@@ -33,7 +34,9 @@ export default function GetConnectedPage() {
     threshold: 0.1,
     rootMargin: "0px 0px -100px 0px",
   })
-
+  const handleConnectWallet = () => {
+    router.push("/trading")
+  }
   const { ref: supportRef, inView: supportInView } = useInView({
     triggerOnce: false,
     threshold: 0.1,
@@ -104,7 +107,7 @@ export default function GetConnectedPage() {
 
           {/* Desktop Buttons */}
           <div className="hidden md:flex space-x-4">
-            <AnimatedButton className="bg-cta-blue text-dark hover:bg-primary">Connect SUI Wallet</AnimatedButton>
+            <AnimatedButton className="bg-cta-blue text-dark hover:bg-primary" onClick={handleConnectWallet}>Connect SUI Wallet</AnimatedButton>
             <AnimatedButton
               variant="outline"
               className="text-white border-white bg-gray-800/50 hover:bg-primary hover:text-dark hover:border-primary"
@@ -140,6 +143,7 @@ export default function GetConnectedPage() {
               <AnimatedButton
                 className="bg-cta-blue text-dark hover:bg-primary px-4 sm:px-8 py-2 sm:py-6 text-sm md:text-base"
                 whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(142, 202, 255, 0.5)" }}
+                onClick={handleConnectWallet}
               >
                 Connect SUI Wallet
               </AnimatedButton>
@@ -260,9 +264,18 @@ export default function GetConnectedPage() {
                       </li>
                     </ul>
                     <div className="flex flex-wrap gap-3">
-                      <AnimatedButton className="bg-primary text-dark hover:bg-blue-600" whileHover={{ scale: 1.05 }}>
-                        Download SUI Wallet
-                      </AnimatedButton>
+                      <a
+                        href="https://slush.app/download"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <AnimatedButton
+                          className="bg-primary text-dark hover:bg-blue-600"
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          Download SUI Wallet
+                        </AnimatedButton>
+                      </a>
                       <AnimatedButton
                         variant="outline"
                         className="text-white border-white bg-gray-800 hover:bg-gray-700"
@@ -896,6 +909,7 @@ export default function GetConnectedPage() {
               <AnimatedButton
                 className="bg-dark text-white hover:bg-secondary px-4 sm:px-8 py-2 sm:py-6 text-sm md:text-base"
                 whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(0, 15, 29, 0.5)" }}
+                onClick={handleConnectWallet}
               >
                 Connect Wallet
               </AnimatedButton>
@@ -970,7 +984,7 @@ export default function GetConnectedPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
           >
-            <p>© 2023 Nexus Trade. All rights reserved.</p>
+            <p>© 2025 Nexus Trade. All rights reserved.</p>
             <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4">
               <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
                 <Link href="/privacy-policy" className="hover:text-primary">

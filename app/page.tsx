@@ -646,7 +646,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
           >
-            <p>© 2023 Nexus Trade. All rights reserved.</p>
+            <p>© 2025 Nexus Trade. All rights reserved.</p>
             <div className="flex flex-wrap justify-center gap-3 md:gap-4 mt-4">
               <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
                 <Link href="/privacy-policy" className="hover:text-primary">

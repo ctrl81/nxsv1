@@ -5,12 +5,16 @@ export type OrderType = "market" | "limit"
 
 export type PositionType = "long" | "short"
 
+export type OrderStatus = "open" | "filled" | "canceled"
+
+export type Token = "WBTC" | "ETH" | "SUI"
+
 export type CandleData = {
-  time: number
+  timestamp: number
   open: number
   high: number
-  close: number
   low: number
+  close: number
   volume: number
 }
 
@@ -20,11 +24,11 @@ export type OrderBookEntry = {
 }
 
 export type OrderBook = {
-  bids: OrderBookEntry[]
-  asks: OrderBookEntry[]
+  bids: Array<[number, number]> // [price, size]
+  asks: Array<[number, number]> // [price, size]
 }
 
-export type Position = {
+export interface Position {
   id: string
   type: PositionType
   entryPrice: number
@@ -41,45 +45,33 @@ export type Position = {
   _closeReason?: string | null
 }
 
-export type Order = {
+export interface Order {
   id: string
-  type: OrderType
-  positionType: PositionType
+  type: PositionType
+  orderType: OrderType
   price: number
   size: number
-  leverage?: number
-  stopLoss?: number
-  takeProfit?: number
-  filled: number
-  status: "open" | "filled" | "canceled"
+  status: OrderStatus
   timestamp: number
-  filledAt?: number
 }
 
-export type TradeHistory = {
+export interface TradeHistory {
   id: string
   type: PositionType
   price: number
   size: number
   fee: number
   timestamp: number
-  action?: "open" | "close"
-  pnl?: number
-  reason?: string
 }
 
 // Sui blockchain specific tokens
-export type Token = "SUI" | "USDC" | "USDT" | "WETH" | "WBTC" | "CETUS" | "TURBOS" | "AFT"
-
 export type WalletType = "sui" | "stashed"
 
-export type WalletInfo = {
+export interface WalletInfo {
   address: string
-  balance: {
-    [key in Token]?: number
-  }
+  balance: Record<Token, number>
   connected: boolean
-  type: WalletType
+  type: string
 }
 
 export type TradingViewTimeFrame = "1" | "5" | "15" | "60" | "240" | "D" | "W"
@@ -103,4 +95,14 @@ export type PriceAlert = {
   condition: PriceAlertCondition
   createdAt: Date
   isActive: boolean
+}
+
+export interface TradeFormData {
+  type: PositionType
+  orderType: OrderType
+  amount: number
+  leverage: number
+  price?: number
+  stopLoss?: number
+  takeProfit?: number
 }

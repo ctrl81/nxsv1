@@ -9,6 +9,14 @@ import { PriceEditor } from "@/components/trading/price-editor"
 import type { OrderType, PositionType, Token } from "@/lib/types"
 import { AlertTriangle } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useWallet } from "@/contexts/wallet-context"
+import { useTrading } from "@/contexts/trading-context"
+import { Label } from "@/components/ui/label"
 
 interface TradeFormProps {
   currentPrice: number
@@ -30,6 +38,18 @@ interface TradeFormProps {
   }
 }
 
+const tradeFormSchema = z.object({
+  type: z.enum(["long", "short"]),
+  orderType: z.enum(["market", "limit"]),
+  amount: z.number().positive("Amount must be positive"),
+  leverage: z.number().min(1).max(100, "Leverage must be between 1 and 100"),
+  price: z.number().optional(),
+  stopLoss: z.number().optional(),
+  takeProfit: z.number().optional(),
+})
+
+type TradeFormData = z.infer<typeof tradeFormSchema>
+
 export function TradeForm({
   currentPrice,
   onTrade,
@@ -37,16 +57,31 @@ export function TradeForm({
   isConnected = false,
   tradingPair = { baseAsset: "SUI", quoteAsset: "USDC" },
 }: TradeFormProps) {
-  // Get toast
   const { toast } = useToast()
+  const { wallet, error: walletError } = useWallet()
+  const { executeTrade, currentPrice: tradingCurrentPrice, isLoading } = useTrading()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<TradeFormData>({
+    resolver: zodResolver(tradeFormSchema),
+    defaultValues: {
+      type: "long",
+      orderType: "market",
+      amount: 0,
+      leverage: 1,
+    },
+  })
+
+  const formValues = watch()
 
   const [positionType, setPositionType] = useState<PositionType>("long")
-  const [orderType, setOrderType] = useState<OrderType>("market")
-  const [amount, setAmount] = useState<number>(100)
-  const [leverage, setLeverage] = useState<number>(3)
-  const [selectedToken, setSelectedToken] = useState<Token>("USDC")
-  const [stopLoss, setStopLoss] = useState<string>("")
-  const [takeProfit, setTakeProfit] = useState<string>("")
+  const [selectedToken, setSelectedToken] = useState<Token>("WBTC")
   const [showAdvanced, setShowAdvanced] = useState<boolean>(true)
   const [limitPrice, setLimitPrice] = useState<number>(currentPrice)
 
@@ -54,77 +89,79 @@ export function TradeForm({
   const amountOptions = [50, 100, 250, 500, 1000]
 
   // Sui blockchain tokens - filter to show only quote assets
-  const quoteTokens: Token[] = ["USDC", "USDT", "SUI"]
+  const quoteTokens: Token[] = ["WBTC", "ETH", "SUI"]
 
   // Set initial limit price when current price changes
   useEffect(() => {
-    if (orderType === "market") {
+    if (formValues.orderType === "market") {
       setLimitPrice(currentPrice)
     }
-  }, [currentPrice, orderType])
+  }, [currentPrice, formValues.orderType])
 
   // Set initial stop loss and take profit values on position type change only
   useEffect(() => {
     if (positionType === "long") {
       // For long positions: stop loss below entry, take profit above entry
-      setStopLoss((currentPrice * 0.95).toFixed(2)) // 5% below entry price
-      setTakeProfit((currentPrice * 1.1).toFixed(2)) // 10% above entry price
+      setValue("stopLoss", Number((currentPrice * 0.95).toFixed(2))) // 5% below entry price
+      setValue("takeProfit", Number((currentPrice * 1.1).toFixed(2))) // 10% above entry price
     } else {
       // For short positions: stop loss above entry, take profit below entry
-      setStopLoss((currentPrice * 1.05).toFixed(2)) // 5% above entry price
-      setTakeProfit((currentPrice * 0.9).toFixed(2)) // 10% below entry price
+      setValue("stopLoss", Number((currentPrice * 1.05).toFixed(2))) // 5% above entry price
+      setValue("takeProfit", Number((currentPrice * 0.9).toFixed(2))) // 10% below entry price
     }
   }, [positionType]) // Only run on position type change, not on current price change
 
-  const handleSubmit = () => {
-    if (!validateForm()) return
-
-    if (onTrade) {
-      onTrade({
-        type: positionType,
-        orderType,
-        amount,
-        leverage,
-        price: orderType === "limit" ? limitPrice : undefined,
-        stopLoss: stopLoss ? Number.parseFloat(stopLoss) : undefined,
-        takeProfit: takeProfit ? Number.parseFloat(takeProfit) : undefined,
-        token: selectedToken,
-      })
-    }
-  }
-
-  const validateForm = () => {
-    // Basic validation
-    if (!isStopLossValid) {
+  useEffect(() => {
+    if (walletError) {
       toast({
-        title: "Invalid Stop Loss",
-        description: `Stop loss must be between ${stopLossConstraints.min.toFixed(2)} and ${stopLossConstraints.max.toFixed(2)}`,
+        title: "Wallet Error",
+        description: walletError,
         variant: "destructive",
       })
-      return false
     }
+  }, [walletError, toast])
 
-    if (!isTakeProfitValid) {
+  const onSubmit = async (data: TradeFormData) => {
+    if (!wallet?.connected) {
       toast({
-        title: "Invalid Take Profit",
-        description: `Take profit must be between ${takeProfitConstraints.min.toFixed(2)} and ${takeProfitConstraints.max.toFixed(2)}`,
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to trade",
         variant: "destructive",
       })
-      return false
+      return
     }
 
-    return true
+    setIsSubmitting(true)
+    try {
+      const success = await executeTrade(data)
+      if (success) {
+        toast({
+          title: "Trade Executed",
+          description: `${data.type.toUpperCase()} position opened successfully`,
+        })
+      } else {
+        throw new Error("Failed to execute trade")
+      }
+    } catch (error) {
+      toast({
+        title: "Trade Failed",
+        description: error instanceof Error ? error.message : "Failed to execute trade",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Calculate liquidation price
   const liquidationPrice =
     positionType === "long"
-      ? (orderType === "limit" ? limitPrice : currentPrice) * (1 - 0.9 / leverage)
-      : (orderType === "limit" ? limitPrice : currentPrice) * (1 + 0.9 / leverage)
+      ? (formValues.orderType === "limit" ? limitPrice : currentPrice) * (1 - 0.9 / formValues.leverage)
+      : (formValues.orderType === "limit" ? limitPrice : currentPrice) * (1 + 0.9 / formValues.leverage)
 
   // Calculate min/max values for stop loss and take profit
   const getStopLossConstraints = () => {
-    const entryPrice = orderType === "limit" ? limitPrice : currentPrice
+    const entryPrice = formValues.orderType === "limit" ? limitPrice : currentPrice
 
     if (positionType === "long") {
       // For long positions, stop loss must be below entry price but above liquidation price
@@ -142,7 +179,7 @@ export function TradeForm({
   }
 
   const getTakeProfitConstraints = () => {
-    const entryPrice = orderType === "limit" ? limitPrice : currentPrice
+    const entryPrice = formValues.orderType === "limit" ? limitPrice : currentPrice
 
     if (positionType === "long") {
       // For long positions, take profit must be above entry price
@@ -163,31 +200,33 @@ export function TradeForm({
   const takeProfitConstraints = getTakeProfitConstraints()
 
   // Validate stop loss based on position type and constraints
-  const validateStopLoss = (value: string) => {
-    const numValue = Number.parseFloat(value)
-    if (isNaN(numValue)) return false
-
+  const validateStopLoss = (value: number | undefined): boolean => {
+    if (value === undefined) return true
     const { min, max } = stopLossConstraints
-    return numValue >= min && numValue <= max
+    return value >= min && value <= max
   }
 
   // Validate take profit based on position type and constraints
-  const validateTakeProfit = (value: string) => {
-    const numValue = Number.parseFloat(value)
-    if (isNaN(numValue)) return false
-
+  const validateTakeProfit = (value: number | undefined): boolean => {
+    if (value === undefined) return true
     const { min, max } = takeProfitConstraints
-    return numValue >= min && numValue <= max
+    return value >= min && value <= max
   }
 
   // Handle stop loss input change with validation
   const handleStopLossChange = (value: string) => {
-    setStopLoss(value)
+    const numValue = Number(value)
+    if (!isNaN(numValue)) {
+      setValue("stopLoss", numValue)
+    }
   }
 
   // Handle take profit input change with validation
   const handleTakeProfitChange = (value: string) => {
-    setTakeProfit(value)
+    const numValue = Number(value)
+    if (!isNaN(numValue)) {
+      setValue("takeProfit", numValue)
+    }
   }
 
   // Handle limit price change
@@ -200,14 +239,14 @@ export function TradeForm({
     // This would be based on actual balance in a real app
     const maxAmount = 2000 // Example max amount
     const newAmount = Math.floor((maxAmount * percentage) / 100)
-    setAmount(newAmount)
+    setValue("amount", newAmount)
   }
 
   // Check if stop loss is valid
-  const isStopLossValid = validateStopLoss(stopLoss)
+  const isStopLossValid = validateStopLoss(formValues.stopLoss)
 
   // Check if take profit is valid
-  const isTakeProfitValid = validateTakeProfit(takeProfit)
+  const isTakeProfitValid = validateTakeProfit(formValues.takeProfit)
 
   return (
     <motion.div
@@ -248,17 +287,17 @@ export function TradeForm({
       <div className="flex space-x-2 mb-4">
         <button
           className={`flex-1 py-2 px-4 rounded-md text-white font-medium transition-colors ${
-            orderType === "market" ? "bg-blue-900 hover:bg-blue-800" : "bg-gray-800 hover:bg-gray-700"
+            formValues.orderType === "market" ? "bg-blue-900 hover:bg-blue-800" : "bg-gray-800 hover:bg-gray-700"
           }`}
-          onClick={() => setOrderType("market")}
+          onClick={() => setValue("orderType", "market")}
         >
           Market
         </button>
         <button
           className={`flex-1 py-2 px-4 rounded-md text-white font-medium transition-colors ${
-            orderType === "limit" ? "bg-blue-900 hover:bg-blue-800" : "bg-gray-800 hover:bg-gray-700"
+            formValues.orderType === "limit" ? "bg-blue-900 hover:bg-blue-800" : "bg-gray-800 hover:bg-gray-700"
           }`}
-          onClick={() => setOrderType("limit")}
+          onClick={() => setValue("orderType", "limit")}
         >
           Limit
         </button>
@@ -270,7 +309,7 @@ export function TradeForm({
       </div>
 
       {/* Limit Price Editor (only visible for limit orders) */}
-      {orderType === "limit" && (
+      {formValues.orderType === "limit" && (
         <div className="mb-4">
           <PriceEditor
             initialPrice={limitPrice}
@@ -288,7 +327,7 @@ export function TradeForm({
         <div className="flex justify-between text-sm text-gray-400 mb-1">
           <span>Amount to be paid</span>
           <span>
-            {amount.toFixed(2)} {selectedToken}
+            {formValues.amount.toFixed(2)} {selectedToken}
           </span>
         </div>
 
@@ -308,7 +347,7 @@ export function TradeForm({
           </div>
 
           <div className="w-24 py-2 px-4 rounded-md bg-gray-900 text-white font-medium text-right">
-            {amount.toFixed(2)}
+            {formValues.amount.toFixed(2)}
           </div>
         </div>
 
@@ -318,9 +357,9 @@ export function TradeForm({
             <button
               key={option}
               className={`py-1 px-2 text-xs rounded-md transition-colors ${
-                amount === option ? "bg-primary text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                formValues.amount === option ? "bg-primary text-white" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
               }`}
-              onClick={() => setAmount(option)}
+              onClick={() => setValue("amount", option)}
             >
               {option}
             </button>
@@ -345,17 +384,17 @@ export function TradeForm({
       <div className="mb-4">
         <div className="flex justify-between text-sm text-gray-400 mb-1">
           <span>Leverage</span>
-          <span>{leverage}x</span>
+          <span>{formValues.leverage}x</span>
         </div>
 
         <div className="flex items-center space-x-4">
           <div className="text-white font-medium">1x</div>
           <Slider
-            value={[leverage]}
+            value={[formValues.leverage]}
             min={1}
             max={10}
             step={0.1}
-            onValueChange={(value) => setLeverage(value[0])}
+            onValueChange={(value) => setValue("leverage", value[0])}
             className="flex-1"
           />
           <div className="text-white font-medium">10x</div>
@@ -363,13 +402,13 @@ export function TradeForm({
           <div className="flex space-x-2">
             <button
               className="py-1 px-3 rounded-md bg-gray-800 text-white text-sm hover:bg-gray-700"
-              onClick={() => setLeverage(Math.max(1, leverage - 1))}
+              onClick={() => setValue("leverage", Math.max(1, formValues.leverage - 1))}
             >
               -
             </button>
             <button
               className="py-1 px-3 rounded-md bg-gray-800 text-white text-sm hover:bg-gray-700"
-              onClick={() => setLeverage(Math.min(10, leverage + 1))}
+              onClick={() => setValue("leverage", Math.min(10, formValues.leverage + 1))}
             >
               +
             </button>
@@ -390,7 +429,7 @@ export function TradeForm({
           <div className="flex space-x-2">
             <Input
               type="number"
-              value={stopLoss}
+              value={formValues.stopLoss}
               onChange={(e) => handleStopLossChange(e.target.value)}
               className={`bg-gray-900 border-gray-800 text-white flex-1 ${!isStopLossValid ? "border-red-500" : ""}`}
               placeholder={`Stop Loss Price`}
@@ -419,7 +458,7 @@ export function TradeForm({
           <div className="flex space-x-2">
             <Input
               type="number"
-              value={takeProfit}
+              value={formValues.takeProfit}
               onChange={(e) => handleTakeProfitChange(e.target.value)}
               className={`bg-gray-900 border-gray-800 text-white flex-1 ${!isTakeProfitValid ? "border-red-500" : ""}`}
               placeholder={`Take Profit Price`}
@@ -446,50 +485,41 @@ export function TradeForm({
           </div>
           <div className="text-xs text-gray-300">
             Position size:{" "}
-            <span className={amount > 500 ? "text-red-400" : "text-green-400"}>
-              {amount > 500 ? "High" : "Moderate"}
+            <span className={formValues.amount > 500 ? "text-red-400" : "text-green-400"}>
+              {formValues.amount > 500 ? "High" : "Moderate"}
             </span>{" "}
             • Leverage:{" "}
-            <span className={leverage > 5 ? "text-red-400" : "text-green-400"}>
-              {leverage > 5 ? "High" : "Moderate"}
+            <span className={formValues.leverage > 5 ? "text-red-400" : "text-green-400"}>
+              {formValues.leverage > 5 ? "High" : "Moderate"}
             </span>{" "}
             • Liquidation risk:{" "}
-            <span className={leverage > 7 ? "text-red-400" : leverage > 3 ? "text-yellow-400" : "text-green-400"}>
-              {leverage > 7 ? "High" : leverage > 3 ? "Medium" : "Low"}
+            <span className={formValues.leverage > 7 ? "text-red-400" : formValues.leverage > 3 ? "text-yellow-400" : "text-green-400"}>
+              {formValues.leverage > 7 ? "High" : formValues.leverage > 3 ? "Medium" : "Low"}
             </span>
           </div>
         </div>
       </div>
 
       {/* Trade Button */}
-      <AnimatedButton
+      <Button
+        type="submit"
         className={`w-full py-3 font-medium ${
           positionType === "long"
             ? "bg-blue-600 hover:bg-blue-700 text-white"
             : "bg-red-600 hover:bg-red-700 text-white"
         }`}
-        onClick={handleSubmit}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        disabled={!isStopLossValid || !isTakeProfitValid}
+        onClick={handleSubmit(onSubmit)}
+        disabled={isSubmitting || isLoading || !wallet?.connected}
       >
-        {isConnected
-          ? orderType === "market"
-            ? positionType === "long"
-              ? "Open Long Position"
-              : "Open Short Position"
-            : positionType === "long"
-              ? "Place Long Limit Order"
-              : "Place Short Limit Order"
-          : "Connect Wallet"}
-      </AnimatedButton>
+        {isSubmitting ? "Executing..." : "Place Order"}
+      </Button>
 
       {/* Trade Information */}
       <div className="mt-6 space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-gray-400">Entry Price</span>
           <span className="text-white">
-            {isConnected ? `$${orderType === "limit" ? limitPrice.toFixed(2) : currentPrice.toFixed(2)}` : "-"}
+            {isConnected ? `$${formValues.orderType === "limit" ? limitPrice.toFixed(2) : currentPrice.toFixed(2)}` : "-"}
           </span>
         </div>
         <div className="flex justify-between">
@@ -498,15 +528,15 @@ export function TradeForm({
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Stop Loss</span>
-          <span className="text-white">{stopLoss ? `$${Number.parseFloat(stopLoss).toFixed(2)}` : "-"}</span>
+          <span className="text-white">{formValues.stopLoss ? `$${Number.parseFloat(formValues.stopLoss.toString()).toFixed(2)}` : "-"}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Take Profit</span>
-          <span className="text-white">{takeProfit ? `$${Number.parseFloat(takeProfit).toFixed(2)}` : "-"}</span>
+          <span className="text-white">{formValues.takeProfit ? `$${Number.parseFloat(formValues.takeProfit.toString()).toFixed(2)}` : "-"}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Open Fee(0.06%)</span>
-          <span className="text-white">{isConnected ? `$${(amount * 0.0006).toFixed(2)}` : "-"}</span>
+          <span className="text-white">{isConnected ? `$${(formValues.amount * 0.0006).toFixed(2)}` : "-"}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Price Impact</span>
@@ -514,7 +544,7 @@ export function TradeForm({
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">Borrow Fees Due</span>
-          <span className="text-white">{isConnected ? `$${(amount * 0.0001 * leverage).toFixed(4)}/hr` : "-"}</span>
+          <span className="text-white">{isConnected ? `$${(formValues.amount * 0.0001 * formValues.leverage).toFixed(4)}/hr` : "-"}</span>
         </div>
       </div>
     </motion.div>

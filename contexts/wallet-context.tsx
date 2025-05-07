@@ -8,6 +8,7 @@ interface WalletContextType {
   connectWallet: (type: WalletType) => Promise<boolean>
   disconnectWallet: () => void
   isConnecting: boolean
+  error: string | null
 }
 
 const WalletContext = createContext<WalletContextType>({
@@ -15,6 +16,7 @@ const WalletContext = createContext<WalletContextType>({
   connectWallet: async () => false,
   disconnectWallet: () => {},
   isConnecting: false,
+  error: null,
 })
 
 export const useWallet = () => useContext(WalletContext)
@@ -26,23 +28,40 @@ interface WalletProviderProps {
 export function WalletProvider({ children }: WalletProviderProps) {
   const [wallet, setWallet] = useState<WalletInfo | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Check for existing wallet connection on mount
   useEffect(() => {
     const savedWallet = localStorage.getItem("nexus_wallet")
     if (savedWallet) {
       try {
-        setWallet(JSON.parse(savedWallet))
+        const parsedWallet = JSON.parse(savedWallet)
+        if (isValidWalletInfo(parsedWallet)) {
+          setWallet(parsedWallet)
+        } else {
+          throw new Error("Invalid wallet data")
+        }
       } catch (error) {
         console.error("Failed to parse saved wallet", error)
         localStorage.removeItem("nexus_wallet")
+        setError("Failed to restore wallet connection")
       }
     }
   }, [])
 
-  // Mock wallet connection
+  const isValidWalletInfo = (data: any): data is WalletInfo => {
+    return (
+      data &&
+      typeof data.address === "string" &&
+      typeof data.balance === "object" &&
+      typeof data.connected === "boolean" &&
+      typeof data.type === "string"
+    )
+  }
+
   const connectWallet = async (type: WalletType): Promise<boolean> => {
     setIsConnecting(true)
+    setError(null)
 
     try {
       // Simulate connection delay
@@ -68,6 +87,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
       localStorage.setItem("nexus_wallet", JSON.stringify(newWallet))
       return true
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet"
+      setError(errorMessage)
       console.error("Failed to connect wallet", error)
       return false
     } finally {
@@ -77,11 +98,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
   const disconnectWallet = () => {
     setWallet(null)
+    setError(null)
     localStorage.removeItem("nexus_wallet")
   }
 
   return (
-    <WalletContext.Provider value={{ wallet, connectWallet, disconnectWallet, isConnecting }}>
+    <WalletContext.Provider value={{ wallet, connectWallet, disconnectWallet, isConnecting, error }}>
       {children}
     </WalletContext.Provider>
   )

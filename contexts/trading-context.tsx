@@ -1,32 +1,33 @@
-"use client"
+'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import type { CandleData, OrderBook, Position, Order, TradeHistory, PositionType, OrderType, Token } from "@/lib/types"
-import { generateMockCandleData, generateMockOrderBook } from "@/lib/mock-data"
-import { useWallet } from "./wallet-context"
-
-interface TradeFormData {
-  type: PositionType
-  orderType: OrderType
-  amount: number
-  leverage: number
-  price?: number
-  stopLoss?: number
-  takeProfit?: number
-  token: Token
-}
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type {
+  CandleData,
+  OrderBook,
+  Position,
+  Order,
+  TradeHistory,
+  PositionType,
+  OrderType,
+  Token,
+  TradeFormData,
+} from '@/lib/types';
+import { apiClient } from '@/lib/api-client';
+import { useWallet } from '@/contexts/wallet-context';
+import { toast } from '@/components/ui/use-toast';
 
 interface TradingContextType {
-  candleData: CandleData[]
-  orderBook: OrderBook
-  positions: Position[]
-  orders: Order[]
-  tradeHistory: TradeHistory[]
-  currentPrice: number
-  executeTrade: (data: TradeFormData) => Promise<boolean>
-  closePosition: (id: string) => Promise<boolean>
-  cancelOrder: (id: string) => Promise<boolean>
-  isLoading: boolean
+  candleData: CandleData[];
+  orderBook: OrderBook;
+  positions: Position[];
+  orders: Order[];
+  tradeHistory: TradeHistory[];
+  currentPrice: number;
+  executeTrade: (data: TradeFormData) => Promise<boolean>;
+  closePosition: (id: string) => Promise<boolean>;
+  cancelOrder: (id: string) => Promise<boolean>;
+  isLoading: boolean;
+  error: string | null;
 }
 
 const TradingContext = createContext<TradingContextType>({
@@ -40,239 +41,208 @@ const TradingContext = createContext<TradingContextType>({
   closePosition: async () => false,
   cancelOrder: async () => false,
   isLoading: false,
-})
+  error: null,
+});
 
-export const useTrading = () => useContext(TradingContext)
+export const useTrading = () => useContext(TradingContext);
 
 interface TradingProviderProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export function TradingProvider({ children }: TradingProviderProps) {
-  const { wallet } = useWallet()
-  const [candleData, setCandleData] = useState<CandleData[]>([])
-  const [orderBook, setOrderBook] = useState<OrderBook>({ bids: [], asks: [] })
-  const [positions, setPositions] = useState<Position[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
-  const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([])
-  const [currentPrice, setCurrentPrice] = useState<number>(0)
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const { wallet } = useWallet();
+  const [candleData, setCandleData] = useState<CandleData[]>([]);
+  const [orderBook, setOrderBook] = useState<OrderBook>({ bids: [], asks: [] });
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize data on mount
   useEffect(() => {
     const initData = async () => {
-      setIsLoading(true)
-      try {
-        // Generate mock data
-        const mockCandleData = generateMockCandleData()
-        const mockOrderBook = generateMockOrderBook()
+      if (!wallet?.connected) {
+        setError('Wallet not connected');
+        setIsLoading(false);
+        return;
+      }
 
-        setCandleData(mockCandleData)
-        setOrderBook(mockOrderBook)
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Fetch initial data
+        const [candles, orderBookData] = await Promise.all([
+          apiClient.getCandleData('SUI/USDC', '1m'),
+          apiClient.getOrderBook('SUI/USDC'),
+        ]);
+
+        setCandleData(candles);
+        setOrderBook(orderBookData);
 
         // Set current price from the latest candle
-        if (mockCandleData.length > 0) {
-          setCurrentPrice(mockCandleData[mockCandleData.length - 1].close)
+        if (candles.length > 0) {
+          setCurrentPrice(candles[candles.length - 1].close);
         }
-      } catch (error) {
-        console.error("Failed to initialize trading data", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
 
-    initData()
-
-    // Set up interval to update data
-    const interval = setInterval(() => {
-      // Update candle data with a new candle
-      setCandleData((prev) => {
-        if (prev.length === 0) return prev
-
-        const lastCandle = prev[prev.length - 1]
-        const time = lastCandle.time + 60 * 1000 // 1 minute
-        const open = lastCandle.close
-        const close = open * (1 + (Math.random() - 0.5) * 0.01)
-        const high = Math.max(open, close) * (1 + Math.random() * 0.005)
-        const low = Math.min(open, close) * (1 - Math.random() * 0.005)
-        const volume = Math.random() * 100 + 50
-
-        const newCandle: CandleData = { time, open, high, low, close, volume }
-        setCurrentPrice(close)
-
-        return [...prev.slice(1), newCandle]
-      })
-
-      // Update order book
-      setOrderBook(generateMockOrderBook())
-
-      // Update positions PnL and check for stop loss/take profit
-      setPositions((prev) => {
-        const updatedPositions = prev.map((position) => {
-          // Calculate new PnL based on current price
-          const pnlPercentage =
-            position.type === "long"
-              ? ((currentPrice - position.entryPrice) / position.entryPrice) * 100 * position.leverage
-              : ((position.entryPrice - currentPrice) / position.entryPrice) * 100 * position.leverage
-
-          const pnl = (position.size * pnlPercentage) / 100
-
-          // Check if stop loss or take profit would be triggered
-          const isStopLossTriggered =
-            position.stopLoss &&
-            ((position.type === "long" && currentPrice <= position.stopLoss) ||
-              (position.type === "short" && currentPrice >= position.stopLoss))
-
-          const isTakeProfitTriggered =
-            position.takeProfit &&
-            ((position.type === "long" && currentPrice >= position.takeProfit) ||
-              (position.type === "short" && currentPrice <= position.takeProfit))
-
-          // If stop loss or take profit is triggered, we'll handle it in the next step
-          return {
-            ...position,
-            pnl,
-            pnlPercentage,
-            _shouldClose: isStopLossTriggered || isTakeProfitTriggered,
-            _closeReason: isStopLossTriggered ? "Stop Loss" : isTakeProfitTriggered ? "Take Profit" : null,
-          }
-        })
-
-        // Close positions that hit stop loss or take profit
-        const positionsToClose = updatedPositions.filter((position) => position._shouldClose)
-
-        if (positionsToClose.length > 0) {
-          // Add to trade history for closed positions
-          positionsToClose.forEach((position) => {
-            const newTrade: TradeHistory = {
-              id: `trade-${Date.now()}-${position.id}`,
-              type: position.type === "long" ? "short" : "long", // Opposite to close
-              price: currentPrice,
-              size: position.size,
-              fee: position.size * 0.0006, // 0.06% fee
-              timestamp: Date.now(),
+        // Set up WebSocket listeners
+        apiClient.onCandleUpdate(candle => {
+          setCandleData(prev => {
+            const newCandles = [...prev];
+            if (newCandles.length >= 100) {
+              newCandles.shift(); // Remove oldest candle if we have more than 100
             }
+            newCandles.push(candle);
+            return newCandles;
+          });
+          setCurrentPrice(candle.close);
+        });
 
-            setTradeHistory((prev) => [...prev, newTrade])
-          })
+        apiClient.onOrderBookUpdate(book => {
+          setOrderBook(book);
+        });
 
-          // Filter out closed positions
-          return updatedPositions.filter((position) => !position._shouldClose)
-        }
+        apiClient.onTradeUpdate(trade => {
+          setTradeHistory(prev => [trade, ...prev]);
+        });
 
-        return updatedPositions
-      })
-    }, 5000)
+        toast({
+          title: 'Connected',
+          description: 'Successfully connected to trading service',
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Failed to initialize trading data';
+        setError(errorMessage);
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    return () => clearInterval(interval)
-  }, [])
+    initData();
+
+    return () => {
+      apiClient.disconnect();
+    };
+  }, [wallet?.connected]);
 
   // Execute a trade
   const executeTrade = async (data: TradeFormData): Promise<boolean> => {
-    if (!wallet?.connected) return false
-
-    setIsLoading(true)
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Create a new position
-      const newPosition: Position = {
-        id: `pos-${Date.now()}`,
-        type: data.type,
-        entryPrice: currentPrice,
-        leverage: data.leverage,
-        size: data.amount,
-        margin: data.amount / data.leverage,
-        liquidationPrice:
-          data.type === "long" ? currentPrice * (1 - 0.9 / data.leverage) : currentPrice * (1 + 0.9 / data.leverage),
-        stopLoss: data.stopLoss,
-        takeProfit: data.takeProfit,
-        pnl: 0,
-        pnlPercentage: 0,
-        timestamp: Date.now(),
-      }
-
-      setPositions((prev) => [...prev, newPosition])
-
-      // Add to trade history
-      const newTrade: TradeHistory = {
-        id: `trade-${Date.now()}`,
-        type: data.type,
-        price: currentPrice,
-        size: data.amount,
-        fee: data.amount * 0.0006, // 0.06% fee
-        timestamp: Date.now(),
-      }
-
-      setTradeHistory((prev) => [...prev, newTrade])
-
-      return true
-    } catch (error) {
-      console.error("Failed to execute trade", error)
-      return false
-    } finally {
-      setIsLoading(false)
+    if (!wallet?.connected) {
+      setError('Wallet not connected');
+      toast({
+        title: 'Error',
+        description: 'Please connect your wallet to trade',
+        variant: 'destructive',
+      });
+      return false;
     }
-  }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const position = await apiClient.executeTrade(data);
+      setPositions(prev => [...prev, position]);
+
+      toast({
+        title: 'Success',
+        description: `${data.type.toUpperCase()} position opened successfully`,
+      });
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to execute trade';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Close a position
   const closePosition = async (id: string): Promise<boolean> => {
-    if (!wallet?.connected) return false
-
-    setIsLoading(true)
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Find the position
-      const position = positions.find((p) => p.id === id)
-      if (!position) return false
-
-      // Add to trade history
-      const newTrade: TradeHistory = {
-        id: `trade-${Date.now()}`,
-        type: position.type === "long" ? "short" : "long", // Opposite to close
-        price: currentPrice,
-        size: position.size,
-        fee: position.size * 0.0006, // 0.06% fee
-        timestamp: Date.now(),
-      }
-
-      setTradeHistory((prev) => [...prev, newTrade])
-
-      // Remove the position
-      setPositions((prev) => prev.filter((p) => p.id !== id))
-
-      return true
-    } catch (error) {
-      console.error("Failed to close position", error)
-      return false
-    } finally {
-      setIsLoading(false)
+    if (!wallet?.connected) {
+      setError('Wallet not connected');
+      toast({
+        title: 'Error',
+        description: 'Please connect your wallet to trade',
+        variant: 'destructive',
+      });
+      return false;
     }
-  }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await apiClient.closePosition(id);
+      setPositions(prev => prev.filter(p => p.id !== id));
+
+      toast({
+        title: 'Success',
+        description: 'Position closed successfully',
+      });
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to close position';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Cancel an order
   const cancelOrder = async (id: string): Promise<boolean> => {
-    if (!wallet?.connected) return false
-
-    setIsLoading(true)
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Update the order status
-      setOrders((prev) => prev.map((order) => (order.id === id ? { ...order, status: "canceled" } : order)))
-
-      return true
-    } catch (error) {
-      console.error("Failed to cancel order", error)
-      return false
-    } finally {
-      setIsLoading(false)
+    if (!wallet?.connected) {
+      setError('Wallet not connected');
+      toast({
+        title: 'Error',
+        description: 'Please connect your wallet to trade',
+        variant: 'destructive',
+      });
+      return false;
     }
-  }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await apiClient.cancelOrder(id);
+      setOrders(prev => prev.filter(o => o.id !== id));
+
+      toast({
+        title: 'Success',
+        description: 'Order cancelled successfully',
+      });
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel order';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <TradingContext.Provider
@@ -287,9 +257,10 @@ export function TradingProvider({ children }: TradingProviderProps) {
         closePosition,
         cancelOrder,
         isLoading,
+        error,
       }}
     >
       {children}
     </TradingContext.Provider>
-  )
+  );
 }
